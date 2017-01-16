@@ -29,16 +29,16 @@ data2 <- ddply(data, .(SmpDate, Name), function(x) {
   })
 
 # use ODV and control for individual ID with time series correlation
-test = lme(ODV ~ Male*Years, data=data2, random=~1|Name, correlation=corCAR1(form=~SmpDate|Name))
-summary(test) # interaction approaching significance
-test2 = lme(ODV ~ Male + Years, data=data2, random=~1|Name, correlation=corCAR1(form=~SmpDate|Name))
+test = lme(log(ODV+14) ~ Male*Years, data=data2, random=~1|Name, correlation=corCAR1(form=~SmpDate|Name))
+summary(test) # age approaching significance
+test2 = lme(log(ODV+14) ~ Male + Years, data=data2, random=~1|Name, correlation=corCAR1(form=~SmpDate|Name))
 summary(test2) # age significant **
 
 # use ODV and control for individual ID
-test3 <- glmmadmb(ODV ~ Male*Years + (1|Name), data=data, family="gaussian")
-summary(test3) # years and interaction approaching significance
-test4 <- glmmadmb(ODV ~ Male+Years + (1|Name), data=data, family="gaussian")
-summary(test4) # years significant **
+test3 <- glmmadmb(log(ODV+14) ~ Male*Years + (1|Name), data=data, family="gaussian")
+summary(test3) # age significant
+test4 <- glmmadmb(log(ODV+14) ~ Male+Years + (1|Name), data=data, family="gaussian")
+summary(test4) # age significant
 
 # use binary infection and control for individual ID
 test5 <- glmmadmb(Positive ~ Male*Years + (1|Name), data=data, family="binom")
