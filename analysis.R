@@ -1,29 +1,62 @@
-#########################################################################
-# PREPARATIONS
-#########################################################################
+################
+# PREPARATIONS #
+################
 
 # Load plyr package for ddply and MASS for neg binom GLM
 library(plyr)
 library(MASS)
 library(lmtest)
+library(nlme) # mixed models w time series covariance?
 
 # Read data into R
 data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)
 
 # Convert time data to POSIXct
-data$Smp.date <- as.POSIXct(data$SmpDate, format="%m/%d/%y")
+data$SmpDate <- as.POSIXct(data$SmpDate, format="%m/%d/%y")
 data$DOB <- as.POSIXct(data$DOB, format="%m/%d/%y")
+data$Name <- as.factor(data$Name)
+
+data2 <- ddply(data, .(SmpDate, Name), function(x) {
+  data.frame(
+    SmpDate=x$SmpDate[1],
+    Name=x$Name[1],
+    DOB=x$DOB[1],
+    Male=x$Male[1],
+    Age=x$Age[1],
+    Years=x$Years[1],
+    ODV=mean(x$ODV)
+    )
+  })
+
+# use ODV and control for individual ID with time series correlation
+test = lme(ODV ~ Male*Years, data=data2, random=~1|Name, correlation=corCAR1(form=~SmpDate|Name))
+summary(test) # interaction approaching significance
+test2 = lme(ODV ~ Male + Years, data=data2, random=~1|Name, correlation=corCAR1(form=~SmpDate|Name))
+summary(test2) # age significant **
+
+# use ODV and control for individual ID
+test3 <- glmmadmb(ODV ~ Male*Years + (1|Name), data=data, family="gaussian")
+summary(test3) # years and interaction approaching significance
+test4 <- glmmadmb(ODV ~ Male+Years + (1|Name), data=data, family="gaussian")
+summary(test4) # years significant **
+
+# use binary infection and control for individual ID
+test5 <- glmmadmb(Positive ~ Male*Years + (1|Name), data=data, family="binom")
+summary(test5) # nothing
+test6 <- glmmadmb(Positive ~ Male+Years + (1|Name), data=data, family="binom")
+summary(test6) # nothing
 
 #########################################################################
 # SUMMARY STATS
 #########################################################################
 
-sumstats <- ddply(data.sk, .(Name), function (x) {
+sumstats <- ddply(data, .(Name), function (x) {
   data.frame(
     NumSmps = nrow(x),
-    AllNeg = ifelse(sum(as.numeric(x$Results)) == 0, TRUE, FALSE),
-    AllPos = ifelse(sum(as.numeric(x$Results)) == nrow(x), TRUE, FALSE),
-    Pos = ifelse(sum(as.numeric(x$Results)) > 0, TRUE, FALSE)
+    AllNeg = ifelse(sum(as.numeric(x$Positive)) == 0, TRUE, FALSE),
+    AllPos = ifelse(sum(as.numeric(x$Positive)) == nrow(x), TRUE, FALSE),
+    Pos = ifelse(sum(as.numeric(x$Positive)) > 0, TRUE, FALSE),
+    Cyst = x$Cyst[1]
     )
 })
 sumstats2 <- sumstats[sumstats$NumSmps > 1,] # Subset to multiple sampled individuals
@@ -37,9 +70,9 @@ sum(sumstats2$Pos) # 52 positive at least once (35.4%); 27 (21.6%) (excluding th
 #########################################################################
 
 # Checking data for SK
-x <- ddply(data.sk, .(Name), function(x) {
+x <- ddply(data, .(Name), function(x) {
   data.frame(
-    Smps=length(unique(x$Smp.date)),
+    Smps=length(unique(x$SmpDate)),
     Sex=x$Sex[1], 
     DOB=x$DOB[1])
 }) # all indivs in SK
@@ -54,16 +87,16 @@ x2 <- x[x$Smps > 1,]
 #hist(x2$DOB, breaks=10) # distribution of birthdates
 
 # Probability that SK indivs were positive at some point
-x3 <- ddply(data.sk, .(Name), function(x) {
-  x <- x[!duplicated(x$Smp.date),]
-  pos <- ifelse (1 %in% x$Results, 1, 0)
-  numpos <- sum(x$Results=="1")
+x3 <- ddply(data, .(Name), function(x) {
+  x <- x[!duplicated(x$SmpDate),]
+  pos <- ifelse (1 %in% x$Positive, 1, 0)
+  numpos <- sum(x$Positive=="1")
   data.frame(
     Pos=pos,
     NumPos=numpos,
     Cyst=unique(x$Cyst),
-    SmpDates=length(x$Smp.date), 
-    SmpSpan=c(x$Smp.date[nrow(x)] - x$Smp.date[1]),
+    SmpDates=length(x$SmpDate), 
+    SmpSpan=c(x$SmpDate[nrow(x)] - x$SmpDate[1]),
     Sex=x$Sex[1], 
     Age=x$Age[1],
     DOB=x$DOB[1])
@@ -73,16 +106,16 @@ x3 <- ddply(data.sk, .(Name), function(x) {
 # Probability of a negative sample after a positive sample
 # Exclude individuals who were sampled only once
 # Or who tested negative until their last sample
-x4 <- ddply(data.sk[data.sk$Name %in% x2$Name,], .(Name), function(x) {
-  x <- x[!duplicated(x$Smp.date),]
-  x <- x[order(x$Smp.date),]
-  keep <- ifelse (1 %in% x$Results[-nrow(x)], 1, 0)
-  trans <- ifelse (grepl("10", paste(x$Results, collapse="")), 1, 0)
+x4 <- ddply(data[data$Name %in% x2$Name,], .(Name), function(x) {
+  x <- x[!duplicated(x$SmpDate),]
+  x <- x[order(x$SmpDate),]
+  keep <- ifelse (1 %in% x$Positive[-nrow(x)], 1, 0)
+  trans <- ifelse (grepl("10", paste(x$Positive, collapse="")), 1, 0)
   data.frame(Keep=keep,
              Trans=trans,
              Cyst=unique(x$Cyst),
-             SmpDates=length(unique(x$Smp.date)), 
-             SmpSpan=c(x$Smp.date[nrow(x)] - x$Smp.date[1]),
+             SmpDates=length(unique(x$SmpDate)), 
+             SmpSpan=c(x$SmpDate[nrow(x)] - x$SmpDate[1]),
              Sex=x$Sex[1], 
              Age=x$Age[1],
              DOB=x$DOB[1])
@@ -113,24 +146,24 @@ abline(v=log(25.56 + 16)*10, lwd=2, lty=2)
 #abline(v=log(25.56 + 5 + 16)*10, col="red", lwd=2)
 
 # Which individual has a cyst and lies below the cutoff
-data.sk$Name[data.sk$Cyst==1 & data.sk$ODV<37.5] # Mary
+data$Name[data$Cyst==1 & data$ODV<37.5] # Mary
 
 #########################################################################
-# VISUALIZE SAMPLE RESULTS AND DATES FOR ALL SK INDIVIDUALS
+# VISUALIZE SAMPLE Positive AND DATES FOR ALL SK INDIVIDUALS
 #########################################################################
 
 # Create data for figures
-fig1 <- data.sk[data.sk$Name %in% x2$Name,]
+fig1 <- data[data$Name %in% x2$Name,]
 fig1m <- fig1[fig1$Sex == "M",]
 fig1f <- fig1[fig1$Sex == "F",]
 
 # Names ordered by age
 m.names <- ddply(fig1m, .(Name), function(x){
-  x <- x[order(x$Smp.date),]
+  x <- x[order(x$SmpDate),]
   data.frame(x$DOB[1], x$Age[1])
 })
 f.names <- ddply(fig1f, .(Name), function(x){
-  x <- x[order(x$Smp.date),]
+  x <- x[order(x$SmpDate),]
   data.frame(x$DOB[1], x$Age[1])
 })
 m.names <- m.names[order(m.names[,2], decreasing=T),]
@@ -151,15 +184,15 @@ quartz()
 layout(matrix(1:2, 1, 2))
 
 # Males
-plot(c(1:10)~c(1:10), ylim=c(0,nrow(m.names)), xlim=c(min(fig1m$Smp.date), max(fig1m$Smp.date)), type="n", xaxt="n", yaxt="n", xlab="Sample date", ylab="Individual", main="Males (n = 50)")
+plot(c(1:10)~c(1:10), ylim=c(0,nrow(m.names)), xlim=c(min(fig1m$SmpDate), max(fig1m$SmpDate)), type="n", xaxt="n", yaxt="n", xlab="Sample date", ylab="Individual", main="Males (n = 50)")
 ddply(fig1[fig1$Sex=="M",], .(Name), function(x) {
-  x <- x[!duplicated(x$Smp.date),]
-  x <- x[order(x$Smp.date),]
-  cols <- ifelse(x$Results==1, "black", "white")
+  x <- x[!duplicated(x$SmpDate),]
+  x <- x[order(x$SmpDate),]
+  cols <- ifelse(x$Positive==1, "black", "white")
   pos <- which(m.names[,1]==x$Name[1])
-  #points(rep(pos, nrow(x)) ~ Smp.date, data=x, type="l", col="gray")
+  #points(rep(pos, nrow(x)) ~ SmpDate, data=x, type="l", col="gray")
   abline(h=pos, col="gray", lty=3)
-  points(rep(pos, nrow(x)) ~ Smp.date, data=x, pch=21, bg=cols, cex=0.5)
+  points(rep(pos, nrow(x)) ~ SmpDate, data=x, pch=21, bg=cols, cex=0.5)
 })
 axis(side=2, at=1:nrow(m.names), labels=m.names[,3], las=2, cex.axis=0.3, tcl=-0.2, mgp=c(3,0.3,0))
 xdates <- c("Aug 2014", "Sep 2014", "Oct 2014", "Apr 2015", "May 2015", "June 2015")
@@ -171,15 +204,15 @@ text(x=xpos, y=rep(-7, length(xpos)), labels=xdates, cex=0.75, srt=45, pos=1, xp
 legend(1402047062, 63.27607, legend=c("Positive", "Negative"), pch=21, pt.bg=c("black", "white"), xpd=TRUE, cex=0.75)
 
 # Females
-plot(c(1:10)~c(1:10), ylim=c(0,nrow(f.names)), xlim=c(min(fig1f$Smp.date), max(fig1f$Smp.date)), type="n", xaxt="n", yaxt="n", xlab="Sample date", ylab="", main="Females (n = 57)")
+plot(c(1:10)~c(1:10), ylim=c(0,nrow(f.names)), xlim=c(min(fig1f$SmpDate), max(fig1f$SmpDate)), type="n", xaxt="n", yaxt="n", xlab="Sample date", ylab="", main="Females (n = 57)")
 ddply(fig1[fig1$Sex=="F",], .(Name), function(x) {
-  x <- x[!duplicated(x$Smp.date),]
-  x <- x[order(x$Smp.date),]
-  cols <- ifelse(x$Results==1, "black", "white")
+  x <- x[!duplicated(x$SmpDate),]
+  x <- x[order(x$SmpDate),]
+  cols <- ifelse(x$Positive==1, "black", "white")
   pos <- which(f.names[,1]==x$Name[1])
-  #points(rep(pos, nrow(x)) ~ Smp.date, data=x, type="l", col="gray")
+  #points(rep(pos, nrow(x)) ~ SmpDate, data=x, type="l", col="gray")
   abline(h=pos, col="gray", lty=3)
-  points(rep(pos, nrow(x)) ~ Smp.date, data=x, pch=21, bg=cols, cex=0.5)
+  points(rep(pos, nrow(x)) ~ SmpDate, data=x, pch=21, bg=cols, cex=0.5)
 })
 axis(side=2, at=1:nrow(f.names), labels=f.names[,3], las=2, cex.axis=0.3, tcl=-0.2, mgp=c(3,0.3,0))
 axis(side=1, at=xpos, labels=FALSE)
