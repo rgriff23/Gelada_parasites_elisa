@@ -11,20 +11,13 @@ library(lmtest)
 data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)
 
 # Convert time data to POSIXct
-data$Smp.date <- as.POSIXct(data$Smp.date, format="%m/%d/%y")
+data$Smp.date <- as.POSIXct(data$SmpDate, format="%m/%d/%y")
 data$DOB <- as.POSIXct(data$DOB, format="%m/%d/%y")
 
-# Convert Status to 1/0
-data$Results[data$Results=="P"] <- 1
-data$Results[data$Results=="N"] <- 0
+#########################################################################
+# SUMMARY STATS
+#########################################################################
 
-# Convert cyst/no cyst to 1/0
-data$Cyst <- ifelse(data$Cyst=="Y", 1, 0)
-
-# Subset to SK monkeys with recorded birthdates and non-borderline results
-data.sk <- data[data$Site=="SK" & !is.na(data$DOB) & data$Results %in% c(0,1),]
-
-# Some summary statistics for the full data
 sumstats <- ddply(data.sk, .(Name), function (x) {
   data.frame(
     NumSmps = nrow(x),
