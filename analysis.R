@@ -7,47 +7,20 @@ library(plyr)
 library(MASS)
 library(lmtest)
 library(nlme) # mixed models w time series covariance?
+library(glmmADMB)
 
 # Read data into R
 data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)
 
-# Convert time data to POSIXct
-data$SmpDate <- as.POSIXct(data$SmpDate, format="%m/%d/%y")
-data$DOB <- as.POSIXct(data$DOB, format="%m/%d/%y")
+# Create factor variables
 data$Name <- as.factor(data$Name)
+data$Age <- ordered(data$Age, levels=c("I", "SA", "A"))
 
-data2 <- ddply(data, .(SmpDate, Name), function(x) {
-  data.frame(
-    SmpDate=x$SmpDate[1],
-    Name=x$Name[1],
-    DOB=x$DOB[1],
-    Male=x$Male[1],
-    Age=x$Age[1],
-    Years=x$Years[1],
-    ODV=mean(x$ODV)
-    )
-  })
-
-# use ODV and control for individual ID with time series correlation
-test = lme(log(ODV+14) ~ Male*Years, data=data2, random=~1|Name, correlation=corCAR1(form=~SmpDate|Name))
-summary(test) # age approaching significance
-test2 = lme(log(ODV+14) ~ Male + Years, data=data2, random=~1|Name, correlation=corCAR1(form=~SmpDate|Name))
-summary(test2) # age significant **
-
-# use ODV and control for individual ID
-test3 <- glmmadmb(log(ODV+14) ~ Male*Years + (1|Name), data=data, family="gaussian")
-summary(test3) # age significant
-test4 <- glmmadmb(log(ODV+14) ~ Male+Years + (1|Name), data=data, family="gaussian")
-summary(test4) # age significant
-
-# use binary infection and control for individual ID
-test5 <- glmmadmb(Positive ~ Male*Years + (1|Name), data=data, family="binom")
-summary(test5) # nothing
-test6 <- glmmadmb(Positive ~ Male+Years + (1|Name), data=data, family="binom")
-summary(test6) # nothing
+# Convert ODV values below threshold to 0, above to 1
+data$Positive <- ifelse(data$ODV < 42.1, 0, 1)
 
 #########################################################################
-# SUMMARY STATS
+# SUMMARY OF DATA
 #########################################################################
 
 sumstats <- ddply(data, .(Name), function (x) {
@@ -66,64 +39,7 @@ sum(sumstats2$AllPos)# 25 always positive (17%) (15 for sk only (12.2%))
 sum(sumstats2$Pos) # 52 positive at least once (35.4%); 27 (21.6%) (excluding those that tested always positive) (38 for sk only (30.9%); 23 for sk only excluding those that tested always positive, 18.7%)
 
 #########################################################################
-# CHECKING AND SUBSETTING DATA
-#########################################################################
-
-# Checking data for SK
-x <- ddply(data, .(Name), function(x) {
-  data.frame(
-    Smps=length(unique(x$SmpDate)),
-    Sex=x$Sex[1], 
-    DOB=x$DOB[1])
-}) # all indivs in SK
-#nrow(x) # 191 individuals
-#table(x$Sex) # 107 females, 84 males
-#hist(x$DOB, breaks=10) # distribution of birthdates
-
-# SK subsetted to indivs with >1 dates sampled
-x2 <- x[x$Smps > 1,] 
-#nrow(x2) # 107 individuals
-#table(x2$Sex) # 57 females, 50 males
-#hist(x2$DOB, breaks=10) # distribution of birthdates
-
-# Probability that SK indivs were positive at some point
-x3 <- ddply(data, .(Name), function(x) {
-  x <- x[!duplicated(x$SmpDate),]
-  pos <- ifelse (1 %in% x$Positive, 1, 0)
-  numpos <- sum(x$Positive=="1")
-  data.frame(
-    Pos=pos,
-    NumPos=numpos,
-    Cyst=unique(x$Cyst),
-    SmpDates=length(x$SmpDate), 
-    SmpSpan=c(x$SmpDate[nrow(x)] - x$SmpDate[1]),
-    Sex=x$Sex[1], 
-    Age=x$Age[1],
-    DOB=x$DOB[1])
-})
-#table(x3$Pos) # 142 negative, 49 positive at least once
-
-# Probability of a negative sample after a positive sample
-# Exclude individuals who were sampled only once
-# Or who tested negative until their last sample
-x4 <- ddply(data[data$Name %in% x2$Name,], .(Name), function(x) {
-  x <- x[!duplicated(x$SmpDate),]
-  x <- x[order(x$SmpDate),]
-  keep <- ifelse (1 %in% x$Positive[-nrow(x)], 1, 0)
-  trans <- ifelse (grepl("10", paste(x$Positive, collapse="")), 1, 0)
-  data.frame(Keep=keep,
-             Trans=trans,
-             Cyst=unique(x$Cyst),
-             SmpDates=length(unique(x$SmpDate)), 
-             SmpSpan=c(x$SmpDate[nrow(x)] - x$SmpDate[1]),
-             Sex=x$Sex[1], 
-             Age=x$Age[1],
-             DOB=x$DOB[1])
-})
-# nrow(x4) # 107 individuals
-
-#########################################################################
-# VISUALIZE CYST PREVALENCE FOR MALES AND FEMALES
+# VISUALIZE POSITIVE / NEGATIVE SAMPLES
 #########################################################################
 
 
@@ -134,16 +50,15 @@ x4 <- ddply(data[data$Name %in% x2$Name,], .(Name), function(x) {
 
 # Define bar heights and combine into matrix for barplot
 breaks <- seq(0, 6, by=0.1)
-cyst0 <- hist(log(data$ODV[data$Cyst==0] + 16), breaks=breaks, plot=F)
-cyst1 <- hist(log(data$ODV[data$Cyst==1] + 16), breaks=breaks, plot=F)
+cyst0 <- hist(log(data$ODV[data$Cyst==0] + 14), breaks=breaks, plot=F)
+cyst1 <- hist(log(data$ODV[data$Cyst==1] + 14), breaks=breaks, plot=F)
 cyst01 <- rbind(cyst0$counts, cyst1$counts)
 
 # Stacked barplot
 quartz()
-barplot(cyst01, space=0, legend.text=c("No Cyst", "Cyst"), col=c("gray28", "gray87"), xlab="log(Index Value)", ylab="Count (stacked)", ylim=c(0,60))
+barplot(cyst01, space=0, legend.text=c("No Cyst", "Cyst"), col=c("gray28", "gray87"), xlab="log(Index Value + 14)", ylab="Count (stacked)", ylim=c(0,60))
 axis(side=1, at=(0:6)*10, labels=0:6)
-abline(v=log(25.56 + 16)*10, lwd=2, lty=2)
-#abline(v=log(25.56 + 5 + 16)*10, col="red", lwd=2)
+abline(v=log(42.1 + 14)*10, lwd=2, lty=2)
 
 # Which individual has a cyst and lies below the cutoff
 data$Name[data$Cyst==1 & data$ODV<37.5] # Mary
@@ -242,46 +157,29 @@ quartz()
 pp.bplot <- barplot(prop.pos, ylim=c(0, 1), legend.text=c("Female", "Male"), axis.lty=1, beside=T, ylab="Proportion infected", xlab="Age category")
 arrows(x0=c(pp.bplot), y0=err.lower, x1=c(pp.bplot), y1=err.upper, length=0.07, angle=90, code=3)
 
-#########################################################################
-# MODELS
-#########################################################################
+###########
+# MODELS #
+#########
 
-# Males infected younger than females
-x3[x3$Sex=="M" & x3$Pos==1,"DOB"]
-x3[x3$Sex=="F" & x3$Pos==1,"DOB"]
+# Binomial GLM with ordered categorial age
+model.b1 <- glm(Positive ~ Male + Age, data=data, family="binomial")
+summary(model.b1) # positive linear effect of age (p < 0.01)
 
-# Probability of having a cyst (n=191)
-mod0 <- glm(Cyst ~ Sex + DOB, data=x3, family="binomial")
-summary(mod0) # DOB p<0.01
+# Binomial GLM with continuous age
+model.c1 <- glm(Positive ~ Male * Years, data=data, family="binomial")
+summary(model.c1) # significant age and interaction term (age increases risk, stronger effect in males)
 
-# Probability of testing positive in at least one sample (n=191)
-mod1 <- glm(Pos ~ Sex + DOB + SmpDates, data=x3, family="binomial")
-summary(mod1) # DOB p<0.05, SmpDates p<0.01
-mod2 <- glm(Pos ~ Sex + DOB + SmpSpan, data=x3, family="binomial")
-summary(mod2) # DOB<0.01, SmpSpan p<0.1
+# Binomial GLMM with ordered categorial age, individual random effect
+model.b2 <- glmmadmb(Positive ~ Male + Age + (1|Name), data=data, family="binom")
+summary(model.b2) # nothing
 
-# Number of positive samples (poisson model, n=191)
-mod3.0 <- glm(NumPos ~ Sex + DOB + SmpDates, data=x3, family="poisson")
-summary(mod3.0) # SexM p<0.1, DOB p<0.001, SmpDates p<0.001
-mod4.0 <- glm(NumPos ~ Sex + DOB + SmpSpan, data=x3, family="poisson")
-summary(mod4.0) # SexM p<0.01, DOB p<0.001, SmpSpan p<0.05
+# Binomial GLMM with continuous age, individual random effect
+model.c2 <- glmmadmb(Positive ~ Male * Years + (1|Name), data=data, family="binom")
+summary(model.c2) # nothing
 
-# Number of positive samples (neg binomial model, n=191)
-mod3.1 <- glm.nb(NumPos ~ Sex + DOB + SmpDates, data=x3)
-summary(mod3.1) # DOB p<0.05, SmpDates p<0.001
-mod4.1 <- glm.nb(NumPos ~ Sex + DOB + SmpSpan, data=x3)
-summary(mod4.1) # SexM p<0.05, DOB p<0.001, SmpSpan p<0.05
-
-# Compare poisson and negative binomial
-lrtest(mod3.1, mod3.0)
-lrtest(mod4.1, mod4.0)
-
-# Probability of testing negative after testing positive (n=32)
-mod5 <- glm(Trans ~ Sex + DOB + SmpDates, data=x4[x4$Keep==1,], family="binomial")
-summary(mod5) # nothing significant
-mod6 <- glm(Trans ~ Sex + DOB + SmpSpan, data=x4[x4$Keep==1,], family="binomial")
-summary(mod6) # SmpSpan p<0.1
-
+########
+# END #
+######
 
 
 
