@@ -1,12 +1,9 @@
-################
+#################
 # PREPARATIONS #
-################
+###############
 
-# Load plyr package for ddply and MASS for neg binom GLM
+# Load packages
 library(plyr)
-library(MASS)
-library(lmtest)
-library(nlme) # mixed models w time series covariance?
 library(glmmADMB)
 
 # Read data into R
@@ -19,24 +16,55 @@ data$Age <- ordered(data$Age, levels=c("I", "SA", "A"))
 # Convert ODV values below threshold to 0, above to 1
 data$Positive <- ifelse(data$ODV < 42.1, 0, 1)
 
-#########################################################################
-# SUMMARY OF DATA
-#########################################################################
+####################
+# SUMMARY OF DATA #
+##################
 
-sumstats <- ddply(data, .(Name), function (x) {
-  data.frame(
-    NumSmps = nrow(x),
-    AllNeg = ifelse(sum(as.numeric(x$Positive)) == 0, TRUE, FALSE),
-    AllPos = ifelse(sum(as.numeric(x$Positive)) == nrow(x), TRUE, FALSE),
-    Pos = ifelse(sum(as.numeric(x$Positive)) > 0, TRUE, FALSE),
-    Cyst = x$Cyst[1]
-    )
-})
-sumstats2 <- sumstats[sumstats$NumSmps > 1,] # Subset to multiple sampled individuals
-nrow(sumstats2) # 147 individuals (64.6%) (123 for sk only)
-sum(sumstats2$AllNeg) # 95 always negative (85 for sk only)
-sum(sumstats2$AllPos)# 25 always positive (17%) (15 for sk only (12.2%))
-sum(sumstats2$Pos) # 52 positive at least once (35.4%); 27 (21.6%) (excluding those that tested always positive) (38 for sk only (30.9%); 23 for sk only excluding those that tested always positive, 18.7%)
+# demographic breakdown of samples
+nrow(data) # 527 total rows of data
+table(data$Male) # 261 females, 266 males
+table(data$Age) # 57 infants, 104 juvenile/subadult, 366 adult
+
+# summarize data for unique individuals
+sum1 <- ddply(data, .(Name), function(x) {
+  Age <- x$Age[1]
+  Male <- x$Male[1]
+  Years <- mean(x$Years)
+  Cyst <- x$Cyst[1]
+  checkCyst <- length(unique(x$Cyst))
+  numSamps <- nrow(x)
+  numPos <- sum(x$Positive)
+  allNeg <- ifelse(numPos==0, TRUE, FALSE)
+  allPos <- ifelse(numSamps==numPos, TRUE, FALSE)
+  trans <- ifelse(!allNeg & !allPos, TRUE, FALSE)
+  data.frame(Age, Male, Years, Cyst, checkCyst, numSamps, numPos, allNeg, allPos, trans)
+  })
+
+# Confirm that cyst status never changes across individuals during study period
+unique(sum1$checkCyst)
+
+# demographic breakdown of individuals
+nrow(sum1) # 204 unique individuals
+table(sum1$Male) # 117 females, 87 males
+table(sum1$Age) # 37 infants, 60 juvenile/subadult, 107 adult
+range(sum1$Years) # age range from ~0-26 years
+
+# distribution of cysts 
+sum(sum1$Cyst) # 10 cysts in 204 individuals (0.05 prevalence)
+table(sum1[sum1$Cyst==1,"Male"]) # 6 females, 4 males
+table(sum1[sum1$Cyst==1,"Age"]) # 0 infants, 1 subadult, 9 adults
+
+# distribution of positive samples
+median(sum1$numSamps) # median number of samples per individual was 2
+range(sum1$numSamps) # number of samples ranged from 1 to 14
+table(data$Positive) # 419 total negative samples, 108 total positive samples
+table(sum1$allNeg) # 37 individuals with at least 1 positive sample
+sum2 <- sum1[sum1$allNeg==F,] # (subset to individuals with positive samples)
+table(sum2$Male) # 20 females and 17 males with positive samples
+table(sum2$Age) # 1 infant, 7 subadults, and 29 adults with positive samples
+table(sum2$Cyst) # 10 cyst and 27 non-cyst individuals with positive samples
+table(sum2$trans) # 17 were always positive, 20 were 'transient'
+sum2[sum2$trans==TRUE,"Cyst"] # only 1 cyst individual was transient
 
 #########################################################################
 # VISUALIZE POSITIVE / NEGATIVE SAMPLES
