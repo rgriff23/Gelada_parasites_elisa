@@ -13,6 +13,10 @@ data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE
 data$Name <- as.factor(data$Name)
 data$Age <- ordered(data$Age, levels=c("I", "SA", "A"))
 
+# Create date variables
+data$SmpDate <- as.POSIXct(data$SmpDate, format="%m/%d/%y")
+data$DOB <- as.POSIXct(data$DOB, format="%m/%d/%y")
+
 # Convert ODV values below threshold to 0, above to 1
 data$Positive <- ifelse(data$ODV < 42.1, 0, 1)
 
@@ -66,124 +70,24 @@ table(sum2$Cyst) # 10 cyst and 27 non-cyst individuals with positive samples
 table(sum2$trans) # 17 were always positive, 20 were 'transient'
 sum2[sum2$trans==TRUE,"Cyst"] # only 1 cyst individual was transient
 
-#########################################################################
-# VISUALIZE POSITIVE / NEGATIVE SAMPLES
-#########################################################################
-
-
-
-#########################################################################
-# VISUALIZE OD VALUE DISTRIBUTIONS FOR CYST AND NON-CYST INDIVS
-#########################################################################
+##################################################################
+# VISUALIZE OD VALUE DISTRIBUTIONS FOR CYST AND NON-CYST INDIVS #
+################################################################
 
 # Define bar heights and combine into matrix for barplot
 breaks <- seq(0, 6, by=0.1)
-cyst0 <- hist(log(data$ODV[data$Cyst==0] + 14), breaks=breaks, plot=F)
-cyst1 <- hist(log(data$ODV[data$Cyst==1] + 14), breaks=breaks, plot=F)
+cyst0 <- hist(log(data$ODV[data$Cyst==0] + 15), breaks=breaks, plot=F)
+cyst1 <- hist(log(data$ODV[data$Cyst==1] + 15), breaks=breaks, plot=F)
 cyst01 <- rbind(cyst0$counts, cyst1$counts)
 
 # Stacked barplot
 quartz()
-barplot(cyst01, space=0, legend.text=c("No Cyst", "Cyst"), col=c("gray28", "gray87"), xlab="log(Index Value + 14)", ylab="Count (stacked)", ylim=c(0,60))
+barplot(cyst01, space=0, legend.text=c("No Cyst", "Cyst"), col=c("gray28", "gray87"), xlab="log(Index Value + 15)*10", ylab="Count (stacked)", ylim=c(0,60))
 axis(side=1, at=(0:6)*10, labels=0:6)
-abline(v=log(42.1 + 14)*10, lwd=2, lty=2)
+abline(v=log(42.1 + 15)*10, lwd=2, lty=2)
 
 # Which individual has a cyst and lies below the cutoff
-data$Name[data$Cyst==1 & data$ODV<37.5] # Mary
-
-#########################################################################
-# VISUALIZE SAMPLE Positive AND DATES FOR ALL SK INDIVIDUALS
-#########################################################################
-
-# Create data for figures
-fig1 <- data[data$Name %in% x2$Name,]
-fig1m <- fig1[fig1$Sex == "M",]
-fig1f <- fig1[fig1$Sex == "F",]
-
-# Names ordered by age
-m.names <- ddply(fig1m, .(Name), function(x){
-  x <- x[order(x$SmpDate),]
-  data.frame(x$DOB[1], x$Age[1])
-})
-f.names <- ddply(fig1f, .(Name), function(x){
-  x <- x[order(x$SmpDate),]
-  data.frame(x$DOB[1], x$Age[1])
-})
-m.names <- m.names[order(m.names[,2], decreasing=T),]
-m.names[,3] <- as.character(m.names[,3])
-f.names <- f.names[order(f.names[,2], decreasing=T),]
-f.names[,3] <- as.character(f.names[,3])
-m.names[m.names[,3]=="I",3] <- paste(m.names[m.names[,3]=="I",3], 1:sum(m.names[,3]=="I"), sep="")
-m.names[m.names[,3]=="J",3] <- paste(m.names[m.names[,3]=="J",3], 1:sum(m.names[,3]=="J"), sep="")
-m.names[m.names[,3]=="SA",3] <- paste(m.names[m.names[,3]=="SA",3], 1:sum(m.names[,3]=="SA"), sep="")
-m.names[m.names[,3]=="A",3] <- paste(m.names[m.names[,3]=="A",3], 1:sum(m.names[,3]=="A"), sep="")
-f.names[f.names[,3]=="I",3] <- paste(f.names[f.names[,3]=="I",3], 1:sum(f.names[,3]=="I"), sep="")
-f.names[f.names[,3]=="J",3] <- paste(f.names[f.names[,3]=="J",3], 1:sum(f.names[,3]=="J"), sep="")
-f.names[f.names[,3]=="SA",3] <- paste(f.names[f.names[,3]=="SA",3], 1:sum(f.names[,3]=="SA"), sep="")
-f.names[f.names[,3]=="A",3] <- paste(f.names[f.names[,3]=="A",3], 1:sum(f.names[,3]=="A"), sep="")
-
-# Two panel plot
-quartz()
-layout(matrix(1:2, 1, 2))
-
-# Males
-plot(c(1:10)~c(1:10), ylim=c(0,nrow(m.names)), xlim=c(min(fig1m$SmpDate), max(fig1m$SmpDate)), type="n", xaxt="n", yaxt="n", xlab="Sample date", ylab="Individual", main="Males (n = 50)")
-ddply(fig1[fig1$Sex=="M",], .(Name), function(x) {
-  x <- x[!duplicated(x$SmpDate),]
-  x <- x[order(x$SmpDate),]
-  cols <- ifelse(x$Positive==1, "black", "white")
-  pos <- which(m.names[,1]==x$Name[1])
-  #points(rep(pos, nrow(x)) ~ SmpDate, data=x, type="l", col="gray")
-  abline(h=pos, col="gray", lty=3)
-  points(rep(pos, nrow(x)) ~ SmpDate, data=x, pch=21, bg=cols, cex=0.5)
-})
-axis(side=2, at=1:nrow(m.names), labels=m.names[,3], las=2, cex.axis=0.3, tcl=-0.2, mgp=c(3,0.3,0))
-xdates <- c("Aug 2014", "Sep 2014", "Oct 2014", "Apr 2015", "May 2015", "June 2015")
-xpos <- as.POSIXct(c("2014/08/01", "2014/09/01", "2014/10/01", "2015/04/01", "2015/05/01", "2015/06/01"), format="%Y/%m/%d")
-axis(side=1, at=xpos, labels=FALSE)
-text(x=xpos, y=rep(-7, length(xpos)), labels=xdates, cex=0.75, srt=45, pos=1, xpd=T)
-
-# Add legend
-legend(1402047062, 63.27607, legend=c("Positive", "Negative"), pch=21, pt.bg=c("black", "white"), xpd=TRUE, cex=0.75)
-
-# Females
-plot(c(1:10)~c(1:10), ylim=c(0,nrow(f.names)), xlim=c(min(fig1f$SmpDate), max(fig1f$SmpDate)), type="n", xaxt="n", yaxt="n", xlab="Sample date", ylab="", main="Females (n = 57)")
-ddply(fig1[fig1$Sex=="F",], .(Name), function(x) {
-  x <- x[!duplicated(x$SmpDate),]
-  x <- x[order(x$SmpDate),]
-  cols <- ifelse(x$Positive==1, "black", "white")
-  pos <- which(f.names[,1]==x$Name[1])
-  #points(rep(pos, nrow(x)) ~ SmpDate, data=x, type="l", col="gray")
-  abline(h=pos, col="gray", lty=3)
-  points(rep(pos, nrow(x)) ~ SmpDate, data=x, pch=21, bg=cols, cex=0.5)
-})
-axis(side=2, at=1:nrow(f.names), labels=f.names[,3], las=2, cex.axis=0.3, tcl=-0.2, mgp=c(3,0.3,0))
-axis(side=1, at=xpos, labels=FALSE)
-text(x=xpos, y=rep(-7, length(xpos)), labels=xdates, cex=0.75, srt=45, pos=1, xpd=T)
-
-#########################################################################
-# VISUALIZE INFECTION RATE BY AGE AND SEX
-#########################################################################
-
-# Bar heights for infection
-indivs <- table(x3$Sex, x3$Age)[,c(2,3,4,1)]
-indivs <- cbind(indivs, rowSums(indivs))
-positive <- table(x3[x3$Pos==1,"Sex"], x3[x3$Pos==1,"Age"])[,c(2,3,4,1)]
-positive <- cbind(positive, rowSums(positive))
-prop.pos <- positive/indivs
-colnames(prop.pos) <- colnames(positive) <- colnames(indivs) <- c("Infant", "Juvenile", "Subadult", "Adult", "Total")
-err.upper <- c()
-err.lower <- c()
-for (i in 1:10) {
-  test <- prop.test(positive[i], indivs[i])
-  err.upper[i] <- test$conf.int[2]
-  err.lower[i] <- test$conf.int[1]
-}
-
-# Barplot with error bars for proportion with at least one positive
-quartz()
-pp.bplot <- barplot(prop.pos, ylim=c(0, 1), legend.text=c("Female", "Male"), axis.lty=1, beside=T, ylab="Proportion infected", xlab="Age category")
-arrows(x0=c(pp.bplot), y0=err.lower, x1=c(pp.bplot), y1=err.upper, length=0.07, angle=90, code=3)
+data$Name[data$Cyst==1 & data$ODV<42.1] # Mary
 
 ###########
 # MODELS #
