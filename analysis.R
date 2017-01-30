@@ -108,30 +108,33 @@ AIC(model.a3) # 83.782
 AIC(model.a4) # 70.818
 summary(model.a4) # positive effect of age (odds ratio = 1.21; p < 0.001)
 
+# Remove infants and individuals with cysts for GLMMs predicting positive samples
+data2 <- data[data$Cyst==0 & data$Age != "I",]
+
 # Binomial GLMM with ordered categorial age, individual random effect
-#model.b1 <- glmer(Positive ~ Male * Age + (1|Name), data=data, family="binomial") # Error: 'Downdated VtV is not positive definite'
-model.b2 <- glmer(Positive ~ Male + Age + (1|Name), data=data, family="binomial")
-model.b3 <- glmer(Positive ~ Male + (1|Name), data=data, family="binomial")
-model.b4 <- glmer(Positive ~ Age + (1|Name), data=data, family="binomial")
-model.b5 <- glmer(Positive ~ (1|Name), data=data, family="binomial")
-#AIC(model.b1)
-AIC(model.b2) # 283.7679
-AIC(model.b3) # 280.6874
-AIC(model.b4) # 281.7857
-AIC(model.b5) # 278.6875
+model.b1 <- glmer(Positive ~ Male * Age + (1|Name), data=data2, family="binomial") 
+model.b2 <- glmer(Positive ~ Male + Age + (1|Name), data=data2, family="binomial")
+model.b3 <- glmer(Positive ~ Male + (1|Name), data=data2, family="binomial")
+model.b4 <- glmer(Positive ~ Age + (1|Name), data=data2, family="binomial")
+model.b5 <- glmer(Positive ~ (1|Name), data=data2, family="binomial")
+AIC(model.b1) # 225.8092
+AIC(model.b2) # 224.0175
+AIC(model.b3) # 222.0706
+AIC(model.b4) # 222.051
+AIC(model.b5) # 220.0918
 summary(model.b5)
 
 # Binomial GLMM with continuous age, individual random effect
-model.c1 <- glmer(Positive ~ Male * Years + (1|Name), data=data, family="binomial") 
-model.c2 <- glmer(Positive ~ Male + Years + (1|Name), data=data, family="binomial")
-model.c3 <- glmer(Positive ~ Male + (1|Name), data=data, family="binomial")
-model.c4 <- glmer(Positive ~ Years + (1|Name), data=data, family="binomial")
-model.c5 <- glmer(Positive ~ (1|Name), data=data, family="binomial")
-AIC(model.c1) # 283.7513
-AIC(model.c2) # 281.9724
-AIC(model.c3) # 280.6874
-AIC(model.c4) # 279.9943
-AIC(model.c5) # 278.6875
+model.c1 <- glmer(Positive ~ Male * Years + (1|Name), data=data2, family="binomial") 
+model.c2 <- glmer(Positive ~ Male + Years + (1|Name), data=data2, family="binomial")
+model.c3 <- glmer(Positive ~ Male + (1|Name), data=data2, family="binomial")
+model.c4 <- glmer(Positive ~ Years + (1|Name), data=data2, family="binomial")
+model.c5 <- glmer(Positive ~ (1|Name), data=data2, family="binomial")
+AIC(model.c1) # 225.8593
+AIC(model.c2) # 224.0287
+AIC(model.c3) # 222.0706
+AIC(model.c4) # 222.0439
+AIC(model.c5) # 220.0918
 summary(model.c5)
 
 ########
