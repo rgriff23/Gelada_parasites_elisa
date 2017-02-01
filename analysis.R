@@ -3,10 +3,12 @@
 ###############
 
 # Load packages
-library(plyr)
-library(lme4)
-library(pROC)
-library(ggplot2)
+library(plyr) # data wrangling
+library(ggplot2) # plots
+library(pROC) # ROC analysis
+library(lme4) # GLMMs
+library(MuMIn) # model comparison
+
 
 # Read data into R
 data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)
@@ -113,45 +115,20 @@ abline(v=log(42.1 + 15)*10, lwd=2, lty=2)
 # MODELS #
 #########
 
-# Logistic regression predicting cysts
-model.a1 <- glm(Cyst ~ Male * Years, data=indivs, family="binomial")
-model.a2 <- glm(Cyst ~ Male + Years, data=indivs, family="binomial")
-model.a3 <- glm(Cyst ~ Male, data=indivs, family="binomial")
-model.a4 <- glm(Cyst ~ Years, data=indivs, family="binomial")
-AIC(model.a1) # 72.427
-AIC(model.a2) # 72.268
-AIC(model.a3) # 83.782
-AIC(model.a4) # 70.818
-summary(model.a4) # positive effect of age (odds ratio = 1.21; p < 0.001)
+# Subset to subadults/adults for regression predicting cysts
+data_cysts <- ddply(data, .(Name), function(x) {data.frame(Cyst=x$Cyst[1], Male=x$Male[1], Years=mean(x$Years))})
 
-# Remove infants and individuals with cysts for GLMMs predicting positive samples
-data2 <- data[data$Cyst==0 & data$Age != "I",]
+# Logistic regression predicting cysts
+mod1 <- glm(Cyst ~ Male * Years, data=data_cysts, family="binomial", na.action=na.fail)
+dredge(mod1)
 
 # Binomial GLMM with ordered categorial age, individual random effect
-model.b1 <- glmer(Positive ~ Male * Age + (1|Name), data=data_unk, family="binomial") 
-model.b2 <- glmer(Positive ~ Male + Age + (1|Name), data=data_unk, family="binomial")
-model.b3 <- glmer(Positive ~ Male + (1|Name), data=data_unk, family="binomial")
-model.b4 <- glmer(Positive ~ Age + (1|Name), data=data_unk, family="binomial")
-model.b5 <- glmer(Positive ~ (1|Name), data=data_unk, family="binomial")
-AIC(model.b1) # 225.8092
-AIC(model.b2) # 224.0175
-AIC(model.b3) # 222.0706
-AIC(model.b4) # 222.051
-AIC(model.b5) # 220.0918
-summary(model.b5)
+mod2 <- glmer(Positive ~ Male * Age + (1|Name), data=data_unk, family="binomial", na.action=na.fail) 
+dredge(mod2)
 
 # Binomial GLMM with continuous age, individual random effect
-model.c1 <- glmer(Positive ~ Male * Years + (1|Name), data=data_unk, family="binomial") 
-model.c2 <- glmer(Positive ~ Male + Years + (1|Name), data=data_unk, family="binomial")
-model.c3 <- glmer(Positive ~ Male + (1|Name), data=data_unk, family="binomial")
-model.c4 <- glmer(Positive ~ Years + (1|Name), data=data_unk, family="binomial")
-model.c5 <- glmer(Positive ~ (1|Name), data=data_unk, family="binomial")
-AIC(model.c1) # 225.8593
-AIC(model.c2) # 224.0287
-AIC(model.c3) # 222.0706
-AIC(model.c4) # 222.0439
-AIC(model.c5) # 220.0918
-summary(model.c5)
+mod3 <- glmer(Positive ~ Male * Years + (1|Name), data=data_unk, family="binomial", na.action=na.fail) 
+dredge(mod3)
 
 ########
 # END #
