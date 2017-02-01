@@ -9,7 +9,6 @@ library(pROC) # ROC analysis
 library(lme4) # GLMMs
 library(MuMIn) # model comparison
 
-
 # Read data into R
 data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)
 
@@ -41,6 +40,21 @@ df[df$threshold=="Inf","threshold"] <- max(df$threshold)
 
 # plot ROC curve
 qplot(df$FPR,df$TPR,geom="path",lwd=I(2),col=df$threshold,xlab="False positive rate",ylab="True positive rate")	+ scale_colour_gradient("Threshold") + geom_abline(slope=1,lty=2) + theme_classic()
+
+##################################################################
+# VISUALIZE OD VALUE DISTRIBUTIONS FOR CYST AND NON-CYST INDIVS #
+################################################################
+
+# Define bar heights and combine into matrix for barplot
+breaks <- seq(0, 6, by=0.1)
+cyst0 <- hist(log(data$ODV[data$Cyst==0] + 15), breaks=breaks, plot=F)
+cyst1 <- hist(log(data$ODV[data$Cyst==1] + 15), breaks=breaks, plot=F)
+cyst01 <- rbind(cyst0$counts, cyst1$counts)
+
+# Stacked barplot
+barplot(cyst01, space=0, legend.text=c("No Cyst", "Cyst"), col=c("dodgerblue3", "gray"), xlab="log(Index Value + 15)*10", ylab="Count (stacked)", ylim=c(0,60))
+axis(side=1, at=(0:6)*10, labels=0:6)
+abline(v=log(42.1 + 15)*10, lwd=2, lty=2)
 
 ##########################################################
 # SUMMARY OF SAMPLES FROM INDIVIDUALS OF UNKNOWN STATUS #
@@ -96,21 +110,6 @@ indivs3[indivs3$numPos>1,] # inspect the remaining 4
 falsepos <- 1/57
 sum(dbinom(50:412, size=412, prob=falsepos)) # p < 10^-25
 
-##################################################################
-# VISUALIZE OD VALUE DISTRIBUTIONS FOR CYST AND NON-CYST INDIVS #
-################################################################
-
-# Define bar heights and combine into matrix for barplot
-breaks <- seq(0, 6, by=0.1)
-cyst0 <- hist(log(data$ODV[data$Cyst==0] + 15), breaks=breaks, plot=F)
-cyst1 <- hist(log(data$ODV[data$Cyst==1] + 15), breaks=breaks, plot=F)
-cyst01 <- rbind(cyst0$counts, cyst1$counts)
-
-# Stacked barplot
-barplot(cyst01, space=0, legend.text=c("No Cyst", "Cyst"), col=c("dodgerblue3", "gray"), xlab="log(Index Value + 15)*10", ylab="Count (stacked)", ylim=c(0,60))
-axis(side=1, at=(0:6)*10, labels=0:6)
-abline(v=log(42.1 + 15)*10, lwd=2, lty=2)
-
 ###########
 # MODELS #
 #########
@@ -133,7 +132,3 @@ dredge(mod3)
 ########
 # END #
 ######
-
-
-
-
