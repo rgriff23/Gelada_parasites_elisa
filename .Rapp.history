@@ -1,0 +1,468 @@
+data$Name <- as.factor(data$Name)#
+data$Age <- ordered(data$Age, levels=c("I", "J", "SA", "A"))#
+#
+# Convert time data to POSIXct#
+data$SmpDate <- as.POSIXct(data$SmpDate, format="%m/%d/%y")#
+data$DOB <- as.POSIXct(data$DOB, format="%m/%d/%y")#
+#
+# Convert ODV values below threshold to 0#
+data$ODV2 <- ifelse(data$ODV < 25.56, 0, log(data$ODV))#
+#
+# Convert age to binary#
+data$Adult <- ifelse(data$Age %in% c("A","SA"), 1, 0)#
+#
+data2 <- ddply(data, .(SmpDate, Name), function(x) {#
+  data.frame(#
+    SmpDate=x$SmpDate[1],#
+    Name=x$Name[1],#
+    DOB=x$DOB[1],#
+    Male=x$Male[1],#
+    Age=x$Age[1],#
+    Adult=x$Adult[1],#
+    Years=x$Years[1],#
+    ODV=mean(x$ODV),#
+    ODV2=mean(x$ODV)#
+    )#
+  })
+test6 <- glmmadmb(Positive ~ Male+Age + (1|Name), data=data, family="binom")
+summary(test6) # nothing
+data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)
+table(data$Age)
+head(data)
+data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)#
+#
+# Create factor variables#
+data$Name <- as.factor(data$Name)#
+data$Age <- ordered(data$Age, levels=c("I", "SA", "A"))#
+#
+# Convert ODV values below threshold to 0, above to 1#
+data$Positive <- ifelse(data$ODV < 42.1, 0, 1)
+# Binomial GLMM with continuous age#
+model.b <- glmmadmb(Positive ~ Male*Age + (1|Name), data=data, family="binom")#
+summary(model.b) # nothing#
+#
+# Binomial GLMM with ordered categorial age#
+model.c <- glmmadmb(Positive ~ Male*Years + (1|Name), data=data, family="binom")#
+summary(model.c) # nothing
+model.b <- glmmadmb(Positive ~ Male + Age + (1|Name), data=data, family="binom")#
+summary(model.b) # nothing
+?unordered
+?unorder
+boxplot(Positive~Age, data=data)
+table(data$Positive~data$Age)
+table(data$Positive,data$Age)
+summary(glm(Positive ~ Age, data=data, family="binomial"))
+data$Age <- factor(data$Age, levels=c("I", "SA", "A"))
+class(data$Age)
+data$Age <- factor(data$Age, levels=c("I", "SA", "A"), ordered=F)
+class(data$Age)
+summary(glm(Positive ~ Age, data=data, family="binomial"))
+model.b <- glmmadmb(Positive ~ Male + Age + (1|Name), data=data, family="binom")
+summary(model.b) # nothing
+1/56;  10/94; 97/269
+length(unique(data$Name))
+length(unique(data$Name[data$Age=="A"]))
+length(unique(data$Name[data$Age=="SA"]))
+length(unique(data$Name[data$Age=="I"]))
+# Define bar heights and combine into matrix for barplot#
+breaks <- seq(0, 6, by=0.1)#
+cyst0 <- hist(log(data$ODV[data$Cyst==0] + 16), breaks=breaks, plot=F)#
+cyst1 <- hist(log(data$ODV[data$Cyst==1] + 16), breaks=breaks, plot=F)#
+cyst01 <- rbind(cyst0$counts, cyst1$counts)#
+#
+# Stacked barplot#
+quartz()#
+barplot(cyst01, space=0, legend.text=c("No Cyst", "Cyst"), col=c("gray28", "gray87"), xlab="log(Index Value)", ylab="Count (stacked)", ylim=c(0,60))#
+axis(side=1, at=(0:6)*10, labels=0:6)#
+abline(v=log(25.56 + 16)*10, lwd=2, lty=2)
+range(data$ODV)
+breaks <- seq(0, 6, by=0.1)#
+cyst0 <- hist(log(data$ODV[data$Cyst==0] + 14), breaks=breaks, plot=F)#
+cyst1 <- hist(log(data$ODV[data$Cyst==1] + 14), breaks=breaks, plot=F)#
+cyst01 <- rbind(cyst0$counts, cyst1$counts)#
+#
+# Stacked barplot#
+quartz()#
+barplot(cyst01, space=0, legend.text=c("No Cyst", "Cyst"), col=c("gray28", "gray87"), xlab="log(Index Value)", ylab="Count (stacked)", ylim=c(0,60))#
+axis(side=1, at=(0:6)*10, labels=0:6)#
+abline(v=log(42.1 + 14)*10, lwd=2, lty=2)
+# Binomial GLM with ordered categorial age#
+model.a1 <- glm(Positive ~ Male + Age, data=data, family="binomial")#
+summary(model.a1)#
+#
+# Binomial GLM with ordered categorial age#
+model.b1 <- glm(Positive ~ Male * Years, data=data, family="binomial")#
+summary(model.b1)
+data$Age <- ordered(data$Age, levels=c("I", "SA", "A"))
+model.a1 <- glm(Positive ~ Male + Age, data=data, family="binomial")#
+summary(model.a1)
+summary(model.b1)
+exp(0.14)
+log(0.3)
+exp(0.3)
+summary(model.b2) # nothing
+# Binomial GLMM with ordered categorial age, individual random effect#
+model.b2 <- glmmadmb(Positive ~ Male + Age + (1|Name), data=data, family="binom")#
+summary(model.b2) # nothing#
+#
+# Binomial GLMM with continuous age, individual random effect#
+model.c2 <- glmmadmb(Positive ~ Male * Years + (1|Name), data=data, family="binom")#
+summary(model.c2) # nothing
+model.a1 <- glm(Positive ~ Male * Age, data=data, family="binomial")
+summary(model.a1) # positive linear effect of age (p < 0.01)
+model.a1 <- glm(Positive ~ Male + Age, data=data, family="binomial")
+summary(model.a1) # positive linear effect of age (p < 0.01)
+exp(2.1460)
+summary(model.c2) # nothing
+model.b1 <- glm(Positive ~ Male + Age, data=data, family="binomial")#
+summary(model.b1) # positive linear effect of age (p < 0.01)#
+#
+# Binomial GLM with continuous age#
+model.c1 <- glm(Positive ~ Male * Years, data=data, family="binomial")#
+summary(model.c1)
+summary(model.b2) # nothing
+summary(model.c2) # nothing
+# Read data into R#
+data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)#
+#
+# Create factor variables#
+data$Name <- as.factor(data$Name)#
+data$Age <- ordered(data$Age, levels=c("I", "SA", "A"))#
+#
+# Convert ODV values below threshold to 0, above to 1#
+data$Positive <- ifelse(data$ODV < 42.1, 0, 1)
+nrow(data)
+head(data)
+library(plyr)#
+library(lme4)#
+#
+# Read data into R#
+data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)#
+#
+# Create factor variables#
+data$Name <- as.factor(data$Name)#
+data$Age <- ordered(data$Age, levels=c("I", "SA", "A"))#
+#
+# Create date variables#
+data$SmpDate <- as.POSIXct(data$SmpDate, format="%m/%d/%y")#
+data$DOB <- as.POSIXct(data$DOB, format="%m/%d/%y")#
+#
+# Convert ODV values below threshold to 0, above to 1#
+data$Positive <- ifelse(data$ODV < 42.1, 0, 1)
+sum1 <- ddply(data, .(Name), function(x) {#
+  Age <- x$Age[1]#
+  Male <- x$Male[1]#
+  Years <- mean(x$Years)#
+  Cyst <- x$Cyst[1]#
+  numSamps <- nrow(x)#
+  numPos <- sum(x$Positive)#
+  allNeg <- ifelse(numPos==0, TRUE, FALSE)#
+  allPos <- ifelse(numSamps==numPos, TRUE, FALSE)#
+  trans <- ifelse(!allNeg & !allPos, TRUE, FALSE)#
+  data.frame(Age, Male, Years, Cyst, numSamps, numPos, allNeg, allPos, trans)#
+  })
+sum1[sum1$Name=="Viper",]
+sum1[sum1$numSamps>9,]
+sum1[sum1$numSamps>8,]
+sum1[sum1$numSamps>5,]
+sum1[sum1$numSamps>6,]
+nrow(sum1)
+sum1[sum1$numSamps<6,]
+57/37
+104/60
+366/107
+261/117
+266/87
+table(data$Cyst)
+table(sum1$Cyst)
+10/204
+sum1[sum1$Cyst==1,"Years"]
+hist(sum1[sum1$Cyst==1,"Years"])
+mean(sum1[sum1$Cyst==1,"Years"])
+rage(sum1[sum1$Cyst==1,"Years"])
+range(sum1[sum1$Cyst==1,"Years"])
+5.9 + (20.3 - 5.9)/2
+9/107
+10/107
+sum(sum1[sum1$Cyst==0,"numSamps"])
+sum(sum1[sum1$Cyst==1,"numSamps"])
+58/10
+469/194
+sum1[sum1$Cyst==1,]
+median(sum1[sum1$Cyst==1,"numSamps"])
+range(sum1[sum1$Cyst==1,"numSamps"])
+data[data$Name=="Mary"]
+data[data$Name=="Mary",]
+1/58
+# Define bar heights and combine into matrix for barplot#
+breaks <- seq(0, 6, by=0.1)#
+cyst0 <- hist(log(data$ODV[data$Cyst==0] + 15), breaks=breaks, plot=F)#
+cyst1 <- hist(log(data$ODV[data$Cyst==1] + 15), breaks=breaks, plot=F)#
+cyst01 <- rbind(cyst0$counts, cyst1$counts)#
+#
+# Stacked barplot#
+quartz()#
+barplot(cyst01, space=0, legend.text=c("No Cyst", "Cyst"), col=c("gray28", "gray87"), xlab="log(Index Value + 15)*10", ylab="Count (stacked)", ylim=c(0,60))#
+axis(side=1, at=(0:6)*10, labels=0:6)#
+abline(v=log(42.1 + 15)*10, lwd=2, lty=2)
+abline(v=log(14.9 + 15)*10,col="red")
+# Predictors of cysts with categorical age#
+model.a1 <- glm(Cyst ~ Male * Age, data=sum1, family="binomial")#
+summary(model.a1) # positive effect of age (p = 0.013)#
+#
+# Predictors of cysts with continuous age#
+model.a2 <- glm(Cyst ~ Male * Years, data=sum1, family="binomial")#
+summary(model.a2) # positive effect of age (p = 0.013)
+exp(0.16)
+model.a1 <- glm(Cyst ~ Male * Age, data=sum1, family="binomial")#
+summary(model.a1) # positive effect of age (p = 0.013)
+model.a1 <- glm(Cyst ~ Male + Age, data=sum1, family="binomial")#
+summary(model.a1) # positive effect of age (p = 0.013)
+fake = data.frame(c(1,1,1,1,1,0,0,0,0,0), c(0,0,0,0,0,1,0,1,0,1))
+glm(X1~X2,data=fake, family="binomial")
+fake
+names(fake)=c("X1","X2")
+glm(X1~X2,data=fake, family="binomial")
+summary(glm(X1~X2,data=fake, family="binomial"))
+data.frame
+fake
+fake = data.frame(X1=c(1,1,1,1,1,0,0,0,0,0), X2=c(0,0,0,0,0,1,1,1,0,1))
+summary(glm(X1~X2,data=fake, family="binomial"))
+fake = data.frame(X1=c(1,1,1,1,1,0,0,0,0,0), X2=c(0,0,0,0,1,1,1,1,0,1))
+summary(glm(X1~X2,data=fake, family="binomial"))
+set.seed(0)
+y <- c(rep(0,10), rep(1,10))
+x <- c(rep(0,10), sample(10, c(0,1)))
+x
+sample(10, c(0,1))
+sample(c(0,1), 10)
+?sample
+sample(c(0,1), 10, replace=T)
+set.seed(0)#
+y <- c(rep(0,10), rep(1,10))#
+x <- c(rep(0,10), sample(c(0,1), 10, replace=T))#
+data <- data.frame(y,x)#
+data
+lr <- glm(y ~ x, data=data, family="binomial")
+summary(lr)
+data$x[1] <- 1#
+lr <- glm(y ~ x, data=data, family="binomial")#
+summary(lr)
+fake$x <- c(sample(c(1,0),10, replace=T), rep(1,10))
+fake$x <- c(sample(c(1,0),10, replace=T), rep(10,1))
+fake
+data
+data$x <- c(sample(c(1,0),10, replace=T), rep(1,10))
+data
+summary(glm(y~x,data=data, family="binomial"))
+# Binomial GLMM with ordered categorial age, individual random effect#
+model.b2 <- glmer(Positive ~ Male * Age + (1|Name), data=data, family="binomial")#
+summary(model.b2) # nothing
+data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)#
+#
+# Create factor variables#
+data$Name <- as.factor(data$Name)#
+data$Age <- ordered(data$Age, levels=c("I", "SA", "A"))#
+#
+# Create date variables#
+data$SmpDate <- as.POSIXct(data$SmpDate, format="%m/%d/%y")#
+data$DOB <- as.POSIXct(data$DOB, format="%m/%d/%y")#
+#
+# Convert ODV values below threshold to 0, above to 1#
+data$Positive <- ifelse(data$ODV < 42.1, 0, 1)
+# Binomial GLMM with ordered categorial age, individual random effect#
+model.b2 <- glmer(Positive ~ Male * Age + (1|Name), data=data, family="binomial")#
+summary(model.b2) # nothing
+# Binomial GLMM with ordered categorial age, individual random effect#
+model.b2 <- glmer(Positive ~ Male + Age + (1|Name), data=data, family="binomial")#
+summary(model.b2) # nothing
+library(glmmadmb)
+library(admbglmm)
+library(glmmADMB)
+summary(glmmadmb(Positive ~ Male * Age + (1|Name), data=data, family="binom"))
+# Binomial GLMM with continuous age, individual random effect#
+model.c2 <- glmer(Positive ~ Male * Years + (1|Name), data=data, family="binomial")#
+summary(model.c2) # nothing
+# Binomial GLMM with continuous age, individual random effect#
+model.c2 <- glmer(Positive ~ Male + Years + (1|Name), data=data, family="binomial")#
+summary(model.c2) # nothing
+# Binomial GLMM with continuous age, individual random effect#
+model.c2 <- glmer(Positive ~ Male  + (1|Name), data=data, family="binomial")#
+summary(model.c2) # nothing
+# Binomial GLMM with continuous age, individual random effect#
+model.c2 <- glmer(Positive ~ Age  + (1|Name), data=data, family="binomial")#
+summary(model.c2) # nothing
+# Binomial GLMM with continuous age, individual random effect#
+model.c2 <- glmer(Positive ~ (1|Name), data=data, family="binomial")#
+summary(model.c2) # nothing
+model.d2 <- glmer(Positive ~ Male * Years + (1|Name), data=data[data$Cyst==0,], family="binomial")#
+summary(model.d2) # nothing
+model.d2 <- glmer(Positive ~ Male + Years + (1|Name), data=data[data$Cyst==0,], family="binomial")#
+summary(model.d2) # nothing
+model.d2 <- glmer(Positive ~ Male + (1|Name), data=data[data$Cyst==0,], family="binomial")#
+summary(model.d2) # nothing
+model.d2 <- glmer(Positive ~ Years + (1|Name), data=data[data$Cyst==0,], family="binomial")#
+summary(model.d2) # nothing
+model.d2 <- glmer(Positive ~ (1|Name), data=data[data$Cyst==0,], family="binomial")#
+summary(model.d2) # nothing
+?glm
+citation("stats")
+citation("lme4")
+model.a <- glm(Cyst ~ Male * Years, data=sum1, family="binomial")#
+summary(model.a)
+model.a <- glm(Cyst ~ Male, data=sum1, family="binomial")#
+summary(model.a)
+model.a <- glm(Cyst ~ Years, data=sum1, family="binomial")#
+summary(model.a)
+model.a <- glm(Cyst ~ Male + Years, data=sum1, family="binomial")#
+summary(model.a)
+AIC(model.a1)#
+AIC(model.a2)#
+AIC(model.a3)#
+AIC(model.a4)
+model.a1 <- glm(Cyst ~ Male * Years, data=sum1, family="binomial")#
+model.a2 <- glm(Cyst ~ Male + Years, data=sum1, family="binomial")#
+model.a3 <- glm(Cyst ~ Male, data=sum1, family="binomial")#
+model.a4 <- glm(Cyst ~ Years, data=sum1, family="binomial")#
+AIC(model.a1)#
+AIC(model.a2)#
+AIC(model.a3)#
+AIC(model.a4)
+summary(model.a4) # positive effect of age (odds ratio = 1.17; p = 0.013)
+exp(0.19333)
+model.b2 <- glmer(Positive ~ Male * Age + (1|Name), data=data, family="binomial")
+model.b2 <- glmer(Positive ~ Male + Age + (1|Name), data=data, family="binomial")#
+model.b3 <- glmer(Positive ~ Male + (1|Name), data=data, family="binomial")#
+model.b4 <- glmer(Positive ~ Age + (1|Name), data=data, family="binomial")#
+model.b5 <- glmer(Positive ~ (1|Name), data=data, family="binomial")#
+#AIC(model.b1) # 72.427#
+AIC(model.b2) # 72.268#
+AIC(model.b3) # 83.782#
+AIC(model.b4) # 70.818#
+AIC(model.b5) # 70.818
+summary(model.b5) # nothing
+model.c1 <- glmer(Positive ~ Male * Years + (1|Name), data=data, family="binomial") #
+model.c2 <- glmer(Positive ~ Male + Years + (1|Name), data=data, family="binomial")#
+model.c3 <- glmer(Positive ~ Male + (1|Name), data=data, family="binomial")#
+model.c4 <- glmer(Positive ~ Years + (1|Name), data=data, family="binomial")#
+model.c5 <- glmer(Positive ~ (1|Name), data=data, family="binomial")#
+AIC(model.c1) # 72.427#
+AIC(model.c2) # 283.7679#
+AIC(model.c3) # 280.6874#
+AIC(model.c4) # 281.7857#
+AIC(model.c5) # 278.6875
+sum1[sum1$numSamps>5,]
+sum1[sum1$numSamps>5 & sum1$Cyst==0,]
+nrow(sum1[sum1$numSamps>5 & sum1$Cyst==0,])
+nrow(sum1[sum1$numSamps>4 & sum1$Cyst==0,])
+sum1[sum1$numSamps>4 & sum1$Cyst==0,]
+data[data$Name=="Diego",]
+data[data$Name=="Naughty",]
+data[data$Name=="Zio",]
+data[data$Name=="Zion",]
+data[data$Name=="Yoshi",]
+data[data$Name=="Devil",]
+sum(sum1[sum1$Age=="I","numPos"])
+sum(sum1[sum1$Age=="I","numSamp"])
+sum(sum1[sum1$Age=="I","numSamps"])
+sum(sum1[sum1$Cyst==0,"numSamps"])
+sum(sum1[sum1$Cyst==0,"Years"])
+mean(sum1[sum1$Cyst==0,"Years"])
+range(sum1[sum1$Cyst==0,"Years"])
+median(sum1[sum1$Cyst==0,"Years"])
+median(sum1[sum1$Cyst==1,"Years"])
+median(sum1[sum1$Cyst==1,"numSamps"])
+median(sum1[sum1$Cyst==0,"numSamps"])
+range(sum1[sum1$Cyst==0,"numSamps"])
+sum(sum1[sum1$Cyst==0,"numSamps"])
+sum(sum1[sum1$Cyst==0,"posSamps"])/sum(sum1[sum1$Cyst==0,"numSamps"])
+sum(sum1[sum1$Cyst==0,"numPos"])/sum(sum1[sum1$Cyst==0,"numSamps"])
+sum(sum1[sum1$Cyst==0,"numPos"])
+sum(sum1[sum1$Cyst==0,"allNeg"])/sum(sum1[sum1$Cyst==0,"numSamps"])
+1 - sum(sum1[sum1$Cyst==0,"allNeg"])/nrow(sum1[sum1$Cyst==0,])
+sum(sum1[sum1$Cyst==0,"allNeg"])
+nrow(sum1[sum1$Cyst==0,])
+194-167
+27/194
+100-98.21
+falsepos <- 0.0179
+falsepos*469
+falsepos^2
+sum3 <- sum1[sum1$Cyst==0 & sum1$numSamps > 4,]
+nrow(sum3)
+sum3
+sum3[sum3$trans=F,]
+sum3[sum3$trans==F,]
+51*(100-97.65)*0.01
+(100-97.65)
+0.0235*51
+falsepos
+?rbinom
+pbinom(51, size=469, prob=falsepos)
+dbinom(0:50, size=469, prob=falsepos)
+sum(dbinom(0:50, size=469, prob=falsepos))
+sum(dbinom(0:8, size=469, prob=falsepos))
+sum(dbinom(0:15, size=469, prob=falsepos))
+sum(dbinom(0:20, size=469, prob=falsepos))
+1-sum(dbinom(0:20, size=469, prob=falsepos))
+1-sum(dbinom(0:19, size=469, prob=falsepos))
+1-sum(dbinom(0:18, size=469, prob=falsepos))
+1-sum(dbinom(0:25, size=469, prob=falsepos))
+1-sum(dbinom(0:30, size=469, prob=falsepos))
+1-sum(dbinom(0:40, size=469, prob=falsepos))
+1-sum(dbinom(0:50, size=469, prob=falsepos))
+falsepos*469
+sum3[sum3$trans=T,]
+sum3[sum3$trans==T,]
+data[data$Name%in%c("Diego","Naughty"),]
+data[data$Name%in%c("Yoshi","Devil"),]
+data[data$Name%in%c("Yoshi"),]
+data[data$Name%in%c("Devil"),]
+8/9
+SUM3
+sum3
+sum(sum3$numPos)
+29/51
+sum3[sum3$allNeg==T,]
+nrow(sum3)#
+nrow(sum3[sum3$allNeg==T,])
+sum3[sum3$allNeg==F,]
+sum3[sum3$numPos==1,] # inspect the remaining 11
+sum3[sum3$numPos>1,]
+install.packages("pROC")
+data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)
+data[data$Cyst==1 & data$Age=="SA",]
+data[data$Age=="I" | data$Cyst==1,]
+data[data$Age=="I" | data$Cyst==1,c("Age","ODV")]
+data_roc <- data[data$Age=="I" | data$Cyst==1,c("Age","ODV")]#
+data_roc$true_positive <- ifelse(data_roc$Age=="I", 0, 1)
+data_roc
+data_roc <- data[data$Age=="I" | data$Cyst==1,c("Cyst","ODV")]
+data_roc
+# subset data#
+data_roc <- data[data$Age=="I" | data$Cyst==1,c("Cyst","ODV")]#
+#
+# generate ROC curve data#
+ROC <- roc(data_roc$Cyst, data_roc$ODV)
+library(pROC)#
+library(ggplot2)
+ROC <- roc(data_roc$Cyst, data_roc$ODV)
+ROC$auc
+neg#
+df=data.frame(TPR=ROC$sensitivities,FPR=1-ROC$specificities,threshold=ROC$thresholds)#
+#
+# change -Inf and Inf threshold values to the min and max threshold numbers (for plotting):#
+df[df$threshold=="-Inf","threshold"]=min(df$threshold)#
+df[df$threshold=="Inf","threshold"]=max(df$threshold)#
+#
+# plot the ROC curve#
+qplot(df$FPR,df$TPR,geom="path",lwd=I(2),col=df$threshold,xlab="false positive rate",ylab="true positive rate")+scale_colour_gradient("threshold")+geom_abline(slope=1,lty=2)+theme(legend.position=c(0.8,0.3))
+qplot(df$FPR, df$TPR, geom="path", lwd=I(2), col=df$threshold, xlab="False positive rate", ylab="True positive rate")#
+ + scale_colour_gradient("threshold")#
+ + geom_abline(slope=1,lty=2)#
+ + theme(legend.position=c(0.8,0.3))
+# plot ROC curve#
+qplot(df$FPR, df$TPR, geom="path", lwd=I(2), col=df$threshold, xlab="False positive rate", ylab="True positive rate")#
+ + scale_colour_gradient("threshold")#
+ + geom_abline(slope=1,lty=2) + theme(legend.position=c(0.8,0.3))
+qplot(df$FPR, df$TPR, geom="path", lwd=I(2), col=df$threshold, xlab="False positive rate", ylab="True positive rate") + scale_colour_gradient("threshold") + geom_abline(slope=1,lty=2) + theme(legend.position=c(0.8,0.3))

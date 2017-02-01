@@ -5,20 +5,40 @@
 # Load packages
 library(plyr)
 library(lme4)
+library(pROC)
+library(ggplot2)
 
 # Read data into R
 data <- read.csv("~/Desktop/GitHub/Gelada_parasites_elisa/data.csv", header=TRUE, stringsAsFactors=FALSE)
 
-# Create factor variables
+# Format factor variables
 data$Name <- as.factor(data$Name)
 data$Age <- ordered(data$Age, levels=c("I", "SA", "A"))
 
-# Create date variables
+# Format date variables
 data$SmpDate <- as.POSIXct(data$SmpDate, format="%m/%d/%y")
 data$DOB <- as.POSIXct(data$DOB, format="%m/%d/%y")
 
 # Convert ODV values below threshold to 0, above to 1
 data$Positive <- ifelse(data$ODV < 42.1, 0, 1)
+
+########
+# ROC #
+######
+
+# subset data
+data_roc <- data[data$Age=="I" | data$Cyst==1,c("Cyst","ODV")]
+
+# generate ROC curve data
+ROC <- roc(data_roc$Cyst, data_roc$ODV)
+
+# make data frame with roc curve data
+df <- data.frame(TPR=ROC$sensitivities, FPR=1-ROC$specificities, threshold=ROC$thresholds)
+df[df$threshold=="-Inf","threshold"] <- min(df$threshold)
+df[df$threshold=="Inf","threshold"] <- max(df$threshold)
+
+# plot ROC curve
+qplot(df$FPR,df$TPR,geom="path",lwd=I(2),col=df$threshold,xlab="False positive rate",ylab="True positive rate")	+ scale_colour_gradient("Threshold") + geom_abline(slope=1,lty=2) + theme_classic()
 
 ####################
 # SUMMARY OF DATA #
@@ -88,7 +108,6 @@ cyst1 <- hist(log(data$ODV[data$Cyst==1] + 15), breaks=breaks, plot=F)
 cyst01 <- rbind(cyst0$counts, cyst1$counts)
 
 # Stacked barplot
-quartz()
 barplot(cyst01, space=0, legend.text=c("No Cyst", "Cyst"), col=c("gray28", "gray87"), xlab="log(Index Value + 15)*10", ylab="Count (stacked)", ylim=c(0,60))
 axis(side=1, at=(0:6)*10, labels=0:6)
 abline(v=log(42.1 + 15)*10, lwd=2, lty=2)
